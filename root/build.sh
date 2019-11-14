@@ -30,7 +30,7 @@ while read -r MOVE; do
   # split this file if over 2 gigabytes
   filesize=$(du -b "${SRC}" | awk '{print $1}')
   if [[ ${filesize} -gt 2147483648 ]]; then
-    split -b 2147483648 "${SRC}"
+    split -b 2147483647 "${SRC}"
     mv xaa /buildout/"${DEST}"
     mv xab /buildout/"${DEST}".part2
     if [[ -f "xac" ]]; then
