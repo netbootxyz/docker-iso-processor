@@ -34,7 +34,7 @@ while read -r MOVE; do
     mv xaa /buildout/"${DEST}"
     mv xab /buildout/"${DEST}".part2
     if [[ -f "xac" ]]; then
-      mv xac /buildout/"${DEST}".part2
+      mv xac /buildout/"${DEST}".part3
     fi
   else
     mv "${SRC}" /buildout/"${DEST}"
