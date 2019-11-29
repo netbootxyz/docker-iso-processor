@@ -28,16 +28,16 @@ while read -r MOVE; do
   SRC="${MOVE%|*}"
   DEST="${MOVE#*|}"
   # split this file if over 2 gigabytes
-  filesize=$(du -b "${SRC}" | awk '{print $1}')
+  filesize=$(du -b ${SRC} | awk '{print $1}')
   if [[ ${filesize} -gt 2147483648 ]]; then
-    split -b 2147483647 "${SRC}"
+    split -b 2147483647 ${SRC}
     mv xaa /buildout/"${DEST}"
     mv xab /buildout/"${DEST}".part2
     if [[ -f "xac" ]]; then
       mv xac /buildout/"${DEST}".part3
     fi
   else
-    mv "${SRC}" /buildout/"${DEST}"
+    mv ${SRC} /buildout/"${DEST}"
   fi
 done <<< "${CONTENTS}"
 chmod 777 /buildout/*
