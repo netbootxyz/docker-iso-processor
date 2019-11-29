@@ -1,5 +1,4 @@
 #! /bin/bash
-set -e 
 
 # collect variables from settings file
 if [ ! -f /buildout/settings.sh ]; then
