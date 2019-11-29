@@ -1,4 +1,5 @@
 #! /bin/bash
+set -e 
 
 # collect variables from settings file
 if [ ! -f /buildout/settings.sh ]; then
@@ -22,7 +23,7 @@ fi
 
 # extract contents
 cd /root/Downloads
-7z x *.iso
+find . -name "*.iso" -exec 7z x {} \;
 # move files needed to build output
 while read -r MOVE; do
   SRC="${MOVE%|*}"
