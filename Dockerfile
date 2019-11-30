@@ -7,10 +7,12 @@ RUN \
  echo "**** install deps ****" && \
  apt-get update && \
  apt-get install -y \
+	cpio \
 	curl \
 	p7zip-full \
 	psmisc \
-	transmission-cli && \
+	transmission-cli \
+	xz-utils && \
  echo "**** directories ****" && \
  mkdir -p \
 	/buildout \

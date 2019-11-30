@@ -8,6 +8,25 @@ fi
 source /buildout/settings.sh
 rm -f /buildout/settings.sh
 
+
+# initrd package and exit
+if [[ "${COMPRESS_INITRD}" == "true" ]];then
+  # move files needed to build output
+  while read -r MOVE; do
+    DEST="${MOVE#*|}"
+    mv /buildin/${DEST} /buildout/${DEST}
+  done <<< "${CONTENTS}"
+  # compress initrd folder into bootable file
+  cd /buildin/initrd_files
+  if [[ "${INITRD_TYPE}" == "xz" ]];then
+    find . 2>/dev/null | cpio -c -o | xz -9 --format=lzma > /buildout/${INITRD_NAME}
+  elif [[ "${INITRD_TYPE}" == "gz" ]];then
+    find . | cpio -o -c | gzip -9 > /buildout/${INITRD_NAME}
+  fi
+  chmod 777 /buildout/*
+  exit 0
+fi
+
 # download based on type
 if [[ "${TYPE}" == "file" ]]; then
   curl -o \
@@ -41,5 +60,35 @@ while read -r MOVE; do
   fi
 done <<< "${CONTENTS}"
 chmod 777 /buildout/*
+
+# initrd extraction
+if [[ "${EXTRACT_INITRD}" == "true" ]];then
+  COUNTER=1
+  cd /buildout
+  while :
+  do
+    # strip microcode from initrd if it has it
+    LAYERCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | wc -c)
+    if [[ ${LAYERCOUNT} -lt 5000 ]];then
+      # This is a microcode cpio wrapper
+      BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
+      dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT}
+      INITRD_NAME=${INITRD_NAME}${COUNTER}
+    else
+      # this is a compressed archive
+      mkdir initrd_files
+      cd initrd_files
+      if [[ "${INITRD_TYPE}" == "xz" ]];then
+        cat ../${INITRD_NAME} | xz -d | cpio -i -d
+      elif [[ "${INITRD_TYPE}" == "gz" ]];then
+        zcat ../${INITRD_NAME} | cpio -i -d
+      fi
+      rm -f ../${INITRD_NAME}
+      rm -f ../${INITRD_NAME}*
+      break
+    fi
+    COUNTER=$((COUNTER+1))
+  done
+fi
 
 exit 0
