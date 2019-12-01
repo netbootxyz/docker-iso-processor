@@ -19,7 +19,7 @@ if [[ "${COMPRESS_INITRD}" == "true" ]];then
   # compress initrd folder into bootable file
   cd /buildin/initrd_files
   if [[ "${INITRD_TYPE}" == "xz" ]];then
-    find . 2>/dev/null | cpio -c -o | xz -9 --format=lzma > /buildout/${INITRD_NAME}
+    find . 2>/dev/null | cpio -o -H newc | xz --check=crc32 > /buildout/${INITRD_NAME}
   elif [[ "${INITRD_TYPE}" == "gz" ]];then
     find . | cpio -o -c | gzip -9 > /buildout/${INITRD_NAME}
   fi
