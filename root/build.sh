@@ -1,4 +1,5 @@
 #! /bin/bash
+set -e
 
 # collect variables from settings file
 if [ ! -f /buildout/settings.sh ]; then
@@ -36,7 +37,7 @@ elif [[ "${TYPE}" == "torrent" ]]; then
   tmpfile=$(mktemp)
   chmod a+x $tmpfile
   echo "killall transmission-cli" > $tmpfile
-  transmission-cli -f $tmpfile ${URL}
+  transmission-cli -f $tmpfile ${URL} || :
 fi
 
 # extract contents
