@@ -15,7 +15,18 @@ if [[ "${COMPRESS_INITRD}" == "true" ]];then
   # move files needed to build output
   while read -r MOVE; do
     DEST="${MOVE#*|}"
-    mv /buildin/${DEST} /buildout/${DEST}
+    # split this file if over 2 gigabytes
+    filesize=$(du -b /buildin/${DEST} | awk '{print $1}')
+    if [[ ${filesize} -gt 2147483648 ]]; then
+      split -b 2147483647 /buildin/${DEST}
+      mv xaa /buildout/"${DEST}"
+      mv xab /buildout/"${DEST}".part2
+      if [[ -f "xac" ]]; then
+        mv xac /buildout/"${DEST}".part3
+      fi
+    else
+      mv /buildin/${DEST} /buildout/"${DEST}"
+    fi
   done <<< "${CONTENTS}"
   # compress initrd folder into bootable file
   cd /buildin/initrd_files
