@@ -19,7 +19,7 @@ if [[ "${COMPRESS_INITRD}" == "true" ]];then
   done <<< "${CONTENTS}"
   # compress initrd folder into bootable file
   cd /buildin/initrd_files
-  if [[ "${INITRD_TYPE}" == "xz" ]];then
+  if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "lz4" ]];then
     find . 2>/dev/null | cpio -o -H newc | xz --check=crc32 > /buildout/${INITRD_NAME}
   elif [[ "${INITRD_TYPE}" == "gz" ]];then
     find . | cpio -o -c | gzip -9 > /buildout/${INITRD_NAME}
@@ -63,7 +63,8 @@ done <<< "${CONTENTS}"
 chmod 777 /buildout/*
 
 # initrd extraction
-if [[ "${EXTRACT_INITRD}" == "true" ]];then
+if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
+  INITRD_ORG=${INITRD_NAME}
   COUNTER=1
   cd /buildout
   while :
@@ -84,12 +85,26 @@ if [[ "${EXTRACT_INITRD}" == "true" ]];then
       elif [[ "${INITRD_TYPE}" == "gz" ]];then
         zcat ../${INITRD_NAME} | cpio -i -d
       fi
-      rm -f ../${INITRD_NAME}
-      rm -f ../${INITRD_NAME}*
+      rm -f ../${INITRD_ORG}
+      rm -f ../${INITRD_ORG}*
       break
     fi
     COUNTER=$((COUNTER+1))
   done
+elif [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" == "lz4" ]];then
+  INITRD_ORG=${INITRD_NAME}
+  cd /buildout
+  # lz4 extraction detection is a clusterfuck here we just assume we drill twice for gold
+  for COUNTER in 1 2;do
+    BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
+    dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT}
+    INITRD_NAME=${INITRD_NAME}${COUNTER} 
+  done
+  mkdir initrd_files
+  cd initrd_files
+  cat ../${INITRD_NAME} | lz4 -d - | cpio -i -d
+  rm -f ../${INITRD_ORG}
+  rm -f ../${INITRD_ORG}*
 fi
 
 exit 0

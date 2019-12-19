@@ -9,6 +9,7 @@ RUN \
  apt-get install -y \
 	cpio \
 	curl \
+	liblz4-tool \
 	p7zip-full \
 	psmisc \
 	transmission-cli \
