@@ -22,7 +22,7 @@ if [[ "${COMPRESS_INITRD}" == "true" ]];then
   if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "lz4" ]];then
     find . 2>/dev/null | cpio -o -H newc | xz --check=crc32 > /buildout/${INITRD_NAME}
   elif [[ "${INITRD_TYPE}" == "gz" ]];then
-    find . | cpio -o -c | gzip -9 > /buildout/${INITRD_NAME}
+    find . | cpio -o -H newc | gzip -9 > /buildout/${INITRD_NAME}
   fi
   chmod 777 /buildout/*
   exit 0
@@ -85,8 +85,8 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
       elif [[ "${INITRD_TYPE}" == "gz" ]];then
         zcat ../${INITRD_NAME} | cpio -i -d
       fi
-      rm -f ../${INITRD_ORG}
-      rm -f ../${INITRD_ORG}*
+      rm -f ../${INITRD_ORG} || :
+      rm -f ../${INITRD_ORG}* || :
       break
     fi
     COUNTER=$((COUNTER+1))
@@ -103,8 +103,8 @@ elif [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" == "lz4" ]];then
   mkdir initrd_files
   cd initrd_files
   cat ../${INITRD_NAME} | lz4 -d - | cpio -i -d
-  rm -f ../${INITRD_ORG}
-  rm -f ../${INITRD_ORG}*
+  rm -f ../${INITRD_ORG} || :
+  rm -f ../${INITRD_ORG}* || :
 fi
 
 exit 0
