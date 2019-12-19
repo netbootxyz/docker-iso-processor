@@ -85,8 +85,6 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
       elif [[ "${INITRD_TYPE}" == "gz" ]];then
         zcat ../${INITRD_NAME} | cpio -i -d
       fi
-      rm -f ../${INITRD_ORG} || :
-      rm -f ../${INITRD_ORG}* || :
       break
     fi
     COUNTER=$((COUNTER+1))
@@ -103,8 +101,6 @@ elif [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" == "lz4" ]];then
   mkdir initrd_files
   cd initrd_files
   cat ../${INITRD_NAME} | lz4 -d - | cpio -i -d
-  rm -f ../${INITRD_ORG} || :
-  rm -f ../${INITRD_ORG}* || :
 fi
 
 exit 0
