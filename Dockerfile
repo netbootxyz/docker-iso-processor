@@ -7,6 +7,7 @@ RUN \
  echo "**** install deps ****" && \
  apt-get update && \
  apt-get install -y \
+	bsdtar \
 	cpio \
 	curl \
 	liblz4-tool \

@@ -29,6 +29,8 @@ if [[ "${COMPRESS_INITRD}" == "true" ]];then
     find . 2>/dev/null | cpio -o -H newc | xz --check=crc32 > /buildout/${INITRD_NAME}
   elif [[ "${INITRD_TYPE}" == "gz" ]];then
     find . | cpio -o -H newc | gzip -9 > /buildout/${INITRD_NAME}
+  elif [[ "${INITRD_TYPE}" == "arch-xz" ]];then
+    find . -mindepth 1 -printf '%P\0' | sort -z | LANG=C bsdtar --null -cnf - -T - | LANG=C bsdtar --uid 0 --gid 0 --null -cf - --format=newc @- | xz --check=crc32 > /buildout/${INITRD_NAME}
   fi
   chmod 777 /buildout/*
   exit 0
@@ -86,7 +88,7 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
       # this is a compressed archive
       mkdir initrd_files
       cd initrd_files
-      if [[ "${INITRD_TYPE}" == "xz" ]];then
+      if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "arch-xz" ]] ;then
         cat ../${INITRD_NAME} | xz -d | cpio -i -d
       elif [[ "${INITRD_TYPE}" == "gz" ]];then
         zcat ../${INITRD_NAME} | cpio -i -d
