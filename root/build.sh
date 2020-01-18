@@ -50,7 +50,7 @@ fi
 
 # extract contents
 cd /root/Downloads
-find . -name "*.iso" -exec 7z x {} \;
+find . -name "*.iso" -exec 7z x {} -y \;
 # move files needed to build output
 while read -r MOVE; do
   SRC="${MOVE%|*}"
