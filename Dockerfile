@@ -10,6 +10,7 @@ RUN \
 	bsdtar \
 	cpio \
 	curl \
+	jq \
 	liblz4-tool \
 	p7zip-full \
 	psmisc \
