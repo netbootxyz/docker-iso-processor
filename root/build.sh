@@ -100,12 +100,18 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
 elif [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" == "lz4" ]];then
   INITRD_ORG=${INITRD_NAME}
   cd /buildout
-  # lz4 extraction detection is a clusterfuck here we just assume we drill twice for gold
-  for COUNTER in 1 2;do
+  if [[ "${LZ4_SINGLE}" == "true" ]];then
     BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
-    dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT}
-    INITRD_NAME=${INITRD_NAME}${COUNTER} 
-  done
+    dd if=${INITRD_NAME} of=${INITRD_NAME}1 bs=512 skip=${BLOCKCOUNT}
+    INITRD_NAME=${INITRD_NAME}1
+  else
+    # lz4 extraction detection is a clusterfuck here we just assume we drill twice for gold
+    for COUNTER in 1 2;do
+      BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
+      dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT}
+      INITRD_NAME=${INITRD_NAME}${COUNTER} 
+    done
+  fi
   mkdir initrd_files
   cd initrd_files
   cat ../${INITRD_NAME} | lz4 -d - | cpio -i -d
