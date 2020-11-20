@@ -1,4 +1,4 @@
-name: docker-iso-processor
+name: iso-processor
 on:
   push:
   schedule:
