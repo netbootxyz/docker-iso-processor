@@ -17,5 +17,5 @@ Usage Snippet:
 ```
 docker run --rm -it \
   -v $(pwd):/buildout \
-  netbootxyz/iso-processor
+  ghcr.io/netbootxyz/iso-processor
 ```
