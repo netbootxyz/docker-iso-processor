@@ -1,4 +1,4 @@
-FROM ubuntu:bionic
+FROM ubuntu:focal
 
 # environment settings
 ARG DEBIAN_FRONTEND="noninteractive"
