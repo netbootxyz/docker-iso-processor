@@ -25,8 +25,10 @@ if [[ "${COMPRESS_INITRD}" == "true" ]];then
   done <<< "${CONTENTS}"
   # compress initrd folder into bootable file
   cd /buildin/initrd_files
-  if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "lz4" ]];then
+  if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "lz4" ]] ;then
     find . 2>/dev/null | cpio -o -H newc | xz --check=crc32 > /buildout/${INITRD_NAME}
+  elif [[ "${INITRD_TYPE}" == "zstd" ]];then
+    find . 2>/dev/null | cpio -o -H newc | zstd > /buildout/${INITRD_NAME}
   elif [[ "${INITRD_TYPE}" == "gz" ]];then
     find . | cpio -o -H newc | gzip -9 > /buildout/${INITRD_NAME}
   elif [[ "${INITRD_TYPE}" == "arch-xz" ]];then
@@ -90,6 +92,8 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
       cd initrd_files
       if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "arch-xz" ]] ;then
         cat ../${INITRD_NAME} | xz -d | cpio -i -d
+      elif [[ "${INITRD_TYPE}" == "zstd" ]];then
+        cat ../${INITRD_NAME} | zstd -d | cpio -i -d
       elif [[ "${INITRD_TYPE}" == "gz" ]];then
         zcat ../${INITRD_NAME} | cpio -i -d
       fi

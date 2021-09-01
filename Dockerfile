@@ -15,7 +15,8 @@ RUN \
 	p7zip-full \
 	psmisc \
 	transmission-cli \
-	xz-utils && \
+	xz-utils \
+	zstd && \
  echo "**** directories ****" && \
  mkdir -p \
 	/buildout \
