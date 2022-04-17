@@ -38,6 +38,9 @@ if [[ "${COMPRESS_INITRD}" == "true" ]];then
   exit 0
 fi
 
+# return URL that is getting retrieved
+echo Retrieving media from ${URL}
+
 # download based on type
 if [[ "${TYPE}" == "file" ]]; then
   curl -o \
