@@ -1,4 +1,4 @@
-FROM ubuntu:focal
+FROM ubuntu:jammy
 
 # environment settings
 ARG DEBIAN_FRONTEND="noninteractive"
