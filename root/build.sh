@@ -75,6 +75,9 @@ while read -r MOVE; do
 done <<< "${CONTENTS}"
 chmod 777 /buildout/*
 
+# clean up ISOs once extracted
+rm *.iso
+
 # initrd extraction
 if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
   INITRD_ORG=${INITRD_NAME}
