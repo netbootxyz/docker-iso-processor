@@ -1,4 +1,4 @@
-FROM ubuntu:jammy
+FROM ubuntu:noble
 
 # environment settings
 ARG DEBIAN_FRONTEND="noninteractive"
