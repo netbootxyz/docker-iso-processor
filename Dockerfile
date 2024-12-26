@@ -9,6 +9,7 @@ RUN \
  apt-get install -y \
 	cpio \
 	curl \
+        file \
 	jq \
         libarchive-tools \
 	liblz4-tool \
