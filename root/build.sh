@@ -80,6 +80,8 @@ chmod 777 /buildout/*
 # clean up ISOs once extracted
 rm *.iso
 
+echo "Extracting initrd..."
+
 # initrd extraction
 if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
   INITRD_ORG=${INITRD_NAME}
@@ -98,6 +100,8 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
       # this is a compressed archive
       mkdir initrd_files
       cd initrd_files
+      # display file type
+      file ../${INITRD_NAME}
       if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "arch-xz" ]] ;then
         cat ../${INITRD_NAME} | xz -d | cpio -i -d
       elif [[ "${INITRD_TYPE}" == "zstd" ]];then
