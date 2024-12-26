@@ -91,7 +91,7 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
   do
     # strip microcode from initrd if it has it
     LAYERCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | wc -c)
-    if [[ ${LAYERCOUNT} -lt 5000 ]];then
+    if [[ ${LAYERCOUNT} -lt 5000 ]] && [[ "${INITRD_TYPE}" != "uncomp" ]];then
       # This is a microcode cpio wrapper
       BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
       dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT}
@@ -109,7 +109,7 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
       elif [[ "${INITRD_TYPE}" == "gz" ]];then
         zcat ../${INITRD_NAME} | cpio -i -d
       elif [[ "${INITRD_TYPE}" == "uncomp" ]];then
-        cat ../${INITRD_NAME} | cpio -idmv --quiet
+        cat ../${INITRD_NAME} | cpio -i -d
       fi
       break
     fi
