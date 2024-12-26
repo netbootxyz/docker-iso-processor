@@ -105,7 +105,7 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
       elif [[ "${INITRD_TYPE}" == "gz" ]];then
         zcat ../${INITRD_NAME} | cpio -i -d
       elif [[ "${INITRD_TYPE}" == "uncomp" ]];then
-        cat ../${INITRD_NAME} | cpio -i -d
+        cat ../${INITRD_NAME} | cpio -idmv --quiet
       fi
       break
     fi
