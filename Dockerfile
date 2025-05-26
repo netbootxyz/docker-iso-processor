@@ -16,6 +16,7 @@ RUN \
 	p7zip-full \
 	psmisc \
 	transmission-cli \
+        xxd \
 	xz-utils \
 	zstd && \
  echo "**** directories ****" && \
