@@ -110,7 +110,7 @@ if [[ "${COMPRESS_INITRD}" == "true" ]];then
   # compress initrd folder into bootable file
   cd /buildin/initrd_files
   # --- multilayer rebuild ---
-  if [[ -f /buildin/.multilayer_outer/.embedded_offset ]]; then
+  if [[ "${INITRD_TYPE}" == "multilayer" ]] || [[ -f /buildin/.multilayer_outer/.embedded_offset ]]; then
     rebuild_multilayer_initrd "/buildin/.multilayer_outer" "." "/buildout/${INITRD_NAME}"
     chmod 777 /buildout/*
     exit 0
@@ -178,38 +178,41 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
   COUNTER=1
   cd /buildout
   # --- multilayer extraction ---
-  if is_multilayer_initrd "${INITRD_NAME}"; then
+  if [[ "${INITRD_TYPE}" == "multilayer" ]] || is_multilayer_initrd "${INITRD_NAME}"; then
     mkdir -p .multilayer_outer
     extract_multilayer_initrd "${INITRD_NAME}" ".multilayer_outer"
     cp -r .multilayer_outer/initrd_files .
     INITRD_NAME="initrd_files"
   else
-    # strip microcode from initrd if it has it
-    LAYERCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | wc -c)
-    if [[ ${LAYERCOUNT} -lt 5000 ]] && [[ "${INITRD_TYPE}" != "uncomp" ]];then
-      # This is a microcode cpio wrapper
-      BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
-      dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT}
-      INITRD_NAME=${INITRD_NAME}${COUNTER}
-    else
-      # this is a compressed archive
-      mkdir initrd_files
-      cd initrd_files
-      # display file type
-      file ../${INITRD_NAME}
-      if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "arch-xz" ]] ;then
-        cat ../${INITRD_NAME} | xz -d | cpio -i -d
-      elif [[ "${INITRD_TYPE}" == "zstd" ]];then
-        cat ../${INITRD_NAME} | zstd -d | cpio -i -d
-      elif [[ "${INITRD_TYPE}" == "gz" ]];then
-        zcat ../${INITRD_NAME} | cpio -i -d
-      elif [[ "${INITRD_TYPE}" == "uncomp" ]];then
-        cat ../${INITRD_NAME} | cpio -i -d
+    while :
+    do
+      # strip microcode from initrd if it has it
+      LAYERCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | wc -c)
+      if [[ ${LAYERCOUNT} -lt 5000 ]] && [[ "${INITRD_TYPE}" != "uncomp" ]];then
+        # This is a microcode cpio wrapper
+        BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
+        dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT}
+        INITRD_NAME=${INITRD_NAME}${COUNTER}
+      else
+        # this is a compressed archive
+        mkdir initrd_files
+        cd initrd_files
+        # display file type
+        file ../${INITRD_NAME}
+        if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "arch-xz" ]] ;then
+          cat ../${INITRD_NAME} | xz -d | cpio -i -d
+        elif [[ "${INITRD_TYPE}" == "zstd" ]];then
+          cat ../${INITRD_NAME} | zstd -d | cpio -i -d
+        elif [[ "${INITRD_TYPE}" == "gz" ]];then
+          zcat ../${INITRD_NAME} | cpio -i -d
+        elif [[ "${INITRD_TYPE}" == "uncomp" ]];then
+          cat ../${INITRD_NAME} | cpio -i -d
+        fi
+        break
       fi
-      break
-    fi
-    COUNTER=$((COUNTER+1))
-  done
+      COUNTER=$((COUNTER+1))
+    done
+  fi
 elif [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" == "lz4" ]];then
   INITRD_ORG=${INITRD_NAME}
   cd /buildout
