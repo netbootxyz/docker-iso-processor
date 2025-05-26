@@ -10,6 +10,90 @@ source /buildout/settings.sh
 rm -f /buildout/settings.sh
 
 
+# --- Multilayer initrd helpers ---
+
+is_multilayer_initrd() {
+  grep -aob 'TRAILER!!!' "$1" | head -n1 | grep -q .
+}
+
+extract_multilayer_initrd() {
+  IMG="$1"
+  OUTDIR="$2"
+  # Find TRAILER!!! marker
+  TRAILER_OFFSET=$(grep -aob 'TRAILER!!!' "$IMG" | head -n1 | cut -d: -f1)
+  if [ -z "$TRAILER_OFFSET" ]; then
+    echo "Could not find TRAILER!!! marker in $IMG"
+    exit 1
+  fi
+  SEARCH_START=$((TRAILER_OFFSET + 10))
+  MAGIC=""
+  ARCHIVE_OFFSET=""
+  for ((i=0; i<1048576; i++)); do
+    offset=$((SEARCH_START + i))
+    magic=$(dd if="$IMG" bs=1 skip="$offset" count=6 2>/dev/null | xxd -p)
+    case "$magic" in
+      fd377a585a00)
+        MAGIC="xz"
+        ARCHIVE_OFFSET="$offset"
+        break
+        ;;
+      1f8b0800*)
+        MAGIC="gz"
+        ARCHIVE_OFFSET="$offset"
+        break
+        ;;
+      28b52ffd*)
+        MAGIC="zst"
+        ARCHIVE_OFFSET="$offset"
+        break
+        ;;
+      5d000080*)
+        MAGIC="lzma"
+        ARCHIVE_OFFSET="$offset"
+        break
+        ;;
+    esac
+  done
+  if [ -z "$ARCHIVE_OFFSET" ]; then
+    echo "Could not find known compressed archive after TRAILER!!! marker."
+    exit 2
+  fi
+  # Save outer part and embedded archive
+  head -c "$ARCHIVE_OFFSET" "$IMG" > "$OUTDIR/outer_part.bin"
+  dd if="$IMG" bs=1 skip="$ARCHIVE_OFFSET" of="$OUTDIR/embedded_archive.$MAGIC" status=none
+  # Decompress embedded archive
+  case "$MAGIC" in
+    xz)   xz -dc "$OUTDIR/embedded_archive.xz"   > "$OUTDIR/embedded_archive.cpio" ;;
+    gz)   gzip -dc "$OUTDIR/embedded_archive.gz" > "$OUTDIR/embedded_archive.cpio" ;;
+    zst)  zstd -dc "$OUTDIR/embedded_archive.zst" > "$OUTDIR/embedded_archive.cpio" ;;
+    lzma) lzma -dc "$OUTDIR/embedded_archive.lzma" > "$OUTDIR/embedded_archive.cpio" ;;
+  esac
+  mkdir -p "$OUTDIR/initrd_files"
+  (cd "$OUTDIR/initrd_files" && cpio -id < ../embedded_archive.cpio)
+  echo "$ARCHIVE_OFFSET" > "$OUTDIR/.embedded_offset"
+  echo "$MAGIC" > "$OUTDIR/.embedded_magic"
+}
+
+rebuild_multilayer_initrd() {
+  OUTDIR="$1"
+  NEW_INITRD_DIR="$2"
+  OUTPUT="$3"
+  ARCHIVE_OFFSET=$(cat "$OUTDIR/.embedded_offset")
+  MAGIC=$(cat "$OUTDIR/.embedded_magic")
+  TMP_CPIO=$(mktemp --suffix=.cpio)
+  TMP_COMPRESSED=$(mktemp --suffix=.$MAGIC)
+  (cd "$NEW_INITRD_DIR" && find . | cpio -o -H newc > "$TMP_CPIO")
+  case "$MAGIC" in
+    xz)   xz -c "$TMP_CPIO"   > "$TMP_COMPRESSED" ;;
+    gz)   gzip -c "$TMP_CPIO" > "$TMP_COMPRESSED" ;;
+    zst)  zstd -19 -c "$TMP_CPIO" > "$TMP_COMPRESSED" ;;
+    lzma) lzma -c "$TMP_CPIO" > "$TMP_COMPRESSED" ;;
+  esac
+  cat "$OUTDIR/outer_part.bin" > "$OUTPUT"
+  cat "$TMP_COMPRESSED" >> "$OUTPUT"
+  rm -f "$TMP_CPIO" "$TMP_COMPRESSED"
+}
+
 # initrd package and exit
 if [[ "${COMPRESS_INITRD}" == "true" ]];then
   # move files needed to build output
@@ -25,6 +109,12 @@ if [[ "${COMPRESS_INITRD}" == "true" ]];then
   done <<< "${CONTENTS}"
   # compress initrd folder into bootable file
   cd /buildin/initrd_files
+  # --- multilayer rebuild ---
+  if [[ -f /buildin/.multilayer_outer/.embedded_offset ]]; then
+    rebuild_multilayer_initrd "/buildin/.multilayer_outer" "." "/buildout/${INITRD_NAME}"
+    chmod 777 /buildout/*
+    exit 0
+  fi
   if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "lz4" ]] ;then
     find . 2>/dev/null | cpio -o -H newc | xz --check=crc32 > /buildout/${INITRD_NAME}
   elif [[ "${INITRD_TYPE}" == "zstd" ]];then
@@ -87,8 +177,13 @@ if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
   INITRD_ORG=${INITRD_NAME}
   COUNTER=1
   cd /buildout
-  while :
-  do
+  # --- multilayer extraction ---
+  if is_multilayer_initrd "${INITRD_NAME}"; then
+    mkdir -p .multilayer_outer
+    extract_multilayer_initrd "${INITRD_NAME}" ".multilayer_outer"
+    cp -r .multilayer_outer/initrd_files .
+    INITRD_NAME="initrd_files"
+  else
     # strip microcode from initrd if it has it
     LAYERCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | wc -c)
     if [[ ${LAYERCOUNT} -lt 5000 ]] && [[ "${INITRD_TYPE}" != "uncomp" ]];then
