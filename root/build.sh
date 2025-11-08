@@ -83,56 +83,88 @@ rm *.iso
 echo "Extracting initrd..."
 
 # initrd extraction
-if [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" != "lz4" ]];then
+if [[ "${EXTRACT_INITRD}" == "true" ]];then
   INITRD_ORG=${INITRD_NAME}
-  COUNTER=1
   cd /buildout
-  while :
-  do
-    # strip microcode from initrd if it has it
-    LAYERCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | wc -c)
-    if [[ ${LAYERCOUNT} -lt 5000 ]] && [[ "${INITRD_TYPE}" != "uncomp" ]];then
-      # This is a microcode cpio wrapper
-      BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
-      dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT}
-      INITRD_NAME=${INITRD_NAME}${COUNTER}
+  
+  # Try using unmkinitramfs first (handles multi-layer initrds properly)
+  # Modern distros (Ubuntu, Debian, Clonezilla, etc.) use multi-layer initrds with:
+  # - early: microcode
+  # - early2: kernel modules/drivers
+  # - main: actual initramfs
+  if command -v unmkinitramfs >/dev/null 2>&1; then
+    echo "Using unmkinitramfs for proper multi-layer extraction..."
+    mkdir -p initrd_extracted
+    if unmkinitramfs ${INITRD_NAME} initrd_extracted/ 2>/dev/null; then
+      mkdir -p initrd_files
+      # Merge all layers (early, early2, main, etc.) preserving drivers and modules
+      for layer in initrd_extracted/*/; do
+        if [ -d "$layer" ]; then
+          echo "Merging layer: $(basename $layer)"
+          rsync -a "$layer" initrd_files/
+        fi
+      done
+      rm -rf initrd_extracted
+      echo "Successfully extracted multi-layer initrd"
     else
-      # this is a compressed archive
-      mkdir initrd_files
-      cd initrd_files
-      # display file type
-      file ../${INITRD_NAME}
-      if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "arch-xz" ]] ;then
-        cat ../${INITRD_NAME} | xz -d | cpio -i -d
-      elif [[ "${INITRD_TYPE}" == "zstd" ]];then
-        cat ../${INITRD_NAME} | zstd -d | cpio -i -d
-      elif [[ "${INITRD_TYPE}" == "gz" ]];then
-        zcat ../${INITRD_NAME} | cpio -i -d
-      elif [[ "${INITRD_TYPE}" == "uncomp" ]];then
-        cat ../${INITRD_NAME} | cpio -i -d
-      fi
-      break
+      echo "unmkinitramfs failed, falling back to manual extraction"
+      EXTRACT_MANUALLY=true
     fi
-    COUNTER=$((COUNTER+1))
-  done
-elif [[ "${EXTRACT_INITRD}" == "true" ]] && [[ "${INITRD_TYPE}" == "lz4" ]];then
-  INITRD_ORG=${INITRD_NAME}
-  cd /buildout
-  if [[ "${LZ4_SINGLE}" == "true" ]];then
-    BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
-    dd if=${INITRD_NAME} of=${INITRD_NAME}1 bs=512 skip=${BLOCKCOUNT}
-    INITRD_NAME=${INITRD_NAME}1
   else
-    # lz4 extraction detection is a clusterfuck here we just assume we drill twice for gold
-    for COUNTER in 1 2;do
-      BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
-      dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT}
-      INITRD_NAME=${INITRD_NAME}${COUNTER} 
-    done
+    echo "unmkinitramfs not available, using manual extraction"
+    EXTRACT_MANUALLY=true
   fi
-  mkdir initrd_files
-  cd initrd_files
-  cat ../${INITRD_NAME} | lz4 -d - | cpio -i -d
+  
+  # Fallback: manual extraction for simple single-layer initrds or when unmkinitramfs fails
+  if [[ "${EXTRACT_MANUALLY}" == "true" ]]; then
+    if [[ "${INITRD_TYPE}" != "lz4" ]]; then
+      COUNTER=1
+      while :
+      do
+        # strip microcode from initrd if it has it
+        LAYERCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | wc -c)
+        if [[ ${LAYERCOUNT} -lt 5000 ]] && [[ "${INITRD_TYPE}" != "uncomp" ]];then
+          # This is a microcode cpio wrapper
+          BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
+          dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT} 2>/dev/null
+          INITRD_NAME=${INITRD_NAME}${COUNTER}
+        else
+          # this is a compressed archive
+          mkdir -p initrd_files
+          cd initrd_files
+          # display file type
+          file ../${INITRD_NAME}
+          if [[ "${INITRD_TYPE}" == "xz" ]] || [[ "${INITRD_TYPE}" == "arch-xz" ]] ;then
+            cat ../${INITRD_NAME} | xz -d | cpio -i -d
+          elif [[ "${INITRD_TYPE}" == "zstd" ]];then
+            cat ../${INITRD_NAME} | zstd -d | cpio -i -d
+          elif [[ "${INITRD_TYPE}" == "gz" ]];then
+            zcat ../${INITRD_NAME} | cpio -i -d
+          elif [[ "${INITRD_TYPE}" == "uncomp" ]];then
+            cat ../${INITRD_NAME} | cpio -i -d
+          fi
+          break
+        fi
+        COUNTER=$((COUNTER+1))
+      done
+    elif [[ "${INITRD_TYPE}" == "lz4" ]]; then
+      if [[ "${LZ4_SINGLE}" == "true" ]];then
+        BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
+        dd if=${INITRD_NAME} of=${INITRD_NAME}1 bs=512 skip=${BLOCKCOUNT} 2>/dev/null
+        INITRD_NAME=${INITRD_NAME}1
+      else
+        # lz4 extraction detection is a clusterfuck here we just assume we drill twice for gold
+        for COUNTER in 1 2;do
+          BLOCKCOUNT=$(cat ${INITRD_NAME} | cpio -tdmv 2>&1 >/dev/null | awk 'END{print $1}')
+          dd if=${INITRD_NAME} of=${INITRD_NAME}${COUNTER} bs=512 skip=${BLOCKCOUNT} 2>/dev/null
+          INITRD_NAME=${INITRD_NAME}${COUNTER}
+        done
+      fi
+      mkdir -p initrd_files
+      cd initrd_files
+      cat ../${INITRD_NAME} | lz4 -d - | cpio -i -d
+    fi
+  fi
 fi
 
 exit 0

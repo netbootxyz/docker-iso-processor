@@ -7,27 +7,28 @@ RUN \
  echo "**** install deps ****" && \
  apt-get update && \
  apt-get install -y \
-	cpio \
-	curl \
+        cpio \
+        curl \
         file \
-	jq \
+        initramfs-tools-core \
+        jq \
         libarchive-tools \
-	liblz4-tool \
-	p7zip-full \
-	psmisc \
-	transmission-cli \
+        liblz4-tool \
+        p7zip-full \
+        psmisc \
+        transmission-cli \
         xxd \
-	xz-utils \
-	zstd && \
+        xz-utils \
+        zstd && \
  echo "**** directories ****" && \
  mkdir -p \
-	/buildout \
-	/root/Downloads && \
+        /buildout \
+        /root/Downloads && \
  echo "**** clean up ****" && \
  rm -rf \
-	/tmp/* \
-	/var/lib/apt/lists/* \
-	/var/tmp/*
+        /tmp/* \
+        /var/lib/apt/lists/* \
+        /var/tmp/*
 
 # add local files
 COPY /root /
