@@ -16,6 +16,7 @@ RUN \
         liblz4-tool \
         p7zip-full \
         psmisc \
+        rsync \
         transmission-cli \
         xxd \
         xz-utils \
