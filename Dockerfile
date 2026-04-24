@@ -1,4 +1,4 @@
-FROM ubuntu:noble
+FROM ubuntu:resolute
 
 # environment settings
 ARG DEBIAN_FRONTEND="noninteractive"
