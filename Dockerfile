@@ -13,7 +13,7 @@ RUN \
         initramfs-tools-core \
         jq \
         libarchive-tools \
-        liblz4-tool \
+        lz4 \
         p7zip-full \
         psmisc \
         rsync \
