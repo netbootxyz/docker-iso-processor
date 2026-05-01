@@ -16,12 +16,11 @@ if [[ "${COMPRESS_INITRD}" == "true" ]];then
   while read -r MOVE; do
     DEST="${MOVE#*|}"
     mv /buildin/${DEST} /buildout/
-    if [[ -f "/buildin/${DEST}.part2" ]]; then
-      mv /buildin/${DEST}.part2 /buildout/
-    fi
-    if [[ -f "/buildin/${DEST}.part3" ]]; then
-      mv /buildin/${DEST}.part3 /buildout/
-    fi
+    i=2
+    while [[ -f "/buildin/${DEST}.part${i}" ]]; do
+      mv /buildin/${DEST}.part${i} /buildout/
+      i=$((i+1))
+    done
   done <<< "${CONTENTS}"
   # compress initrd folder into bootable file
   cd /buildin/initrd_files
@@ -66,11 +65,15 @@ while read -r MOVE; do
   filesize=$(du -b ${SRC} | awk '{print $1}')
   if [[ ${filesize} -gt 2097152000 ]]; then
     split -b 2097151999 ${SRC}
-    mv xaa /buildout/"${DEST}"
-    mv xab /buildout/"${DEST}".part2
-    if [[ -f "xac" ]]; then
-      mv xac /buildout/"${DEST}".part3
-    fi
+    i=0
+    for chunk in $(ls x?? 2>/dev/null | sort); do
+      i=$((i+1))
+      if [[ ${i} -eq 1 ]]; then
+        mv "${chunk}" /buildout/"${DEST}"
+      else
+        mv "${chunk}" /buildout/"${DEST}".part${i}
+      fi
+    done
   else
     mv ${SRC} /buildout/"${DEST}"
   fi
