@@ -100,15 +100,26 @@ if [[ "${EXTRACT_INITRD}" == "true" ]];then
     mkdir -p initrd_extracted
     if unmkinitramfs ${INITRD_NAME} initrd_extracted/ 2>/dev/null; then
       mkdir -p initrd_files
-      # Merge all layers (early, early2, main, etc.) preserving drivers and modules
-      for layer in initrd_extracted/*/; do
-        if [ -d "$layer" ]; then
+      # unmkinitramfs has two output shapes:
+      #   - multi-layer initrd: extracts to early/, early2/, ..., main/
+      #   - single-layer initrd: extracts the cpio contents directly into the target,
+      #     so top-level entries are filesystem roots like bin/, etc/, sbin/.
+      # Detect by presence of main/, which is unmkinitramfs's signal for multi-layer mode.
+      if [ -d initrd_extracted/main ]; then
+        # Multi-layer: merge ordered layers, preserving microcode + drivers + main fs
+        for layer in initrd_extracted/early*/ initrd_extracted/main/; do
+          [ -d "$layer" ] || continue
           echo "Merging layer: $(basename $layer)"
           rsync -a "$layer" initrd_files/
-        fi
-      done
+        done
+        echo "Successfully extracted multi-layer initrd"
+      else
+        # Single-layer: extracted contents are already the initrd root
+        echo "Single-layer initrd, copying extracted contents"
+        rsync -a initrd_extracted/ initrd_files/
+        echo "Successfully extracted single-layer initrd"
+      fi
       rm -rf initrd_extracted
-      echo "Successfully extracted multi-layer initrd"
     else
       echo "unmkinitramfs failed, falling back to manual extraction"
       EXTRACT_MANUALLY=true
